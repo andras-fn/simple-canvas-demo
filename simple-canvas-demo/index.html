@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Drawing Canvas</title>
+  <style>
+    body { font-family: sans-serif; }
+    #toolbar { margin-bottom: 10px; }
+    canvas { border: 1px solid #333; cursor: crosshair; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="freehandBtn">Freehand</button>
+    <button id="rectBtn">Rectangle</button>
+    <span id="modeLabel">Mode: Freehand</span>
+  </div>
+  <canvas id="canvas" width="600" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const freehandBtn = document.getElementById('freehandBtn');
+    const rectBtn = document.getElementById('rectBtn');
+    const modeLabel = document.getElementById('modeLabel');
+
+    let mode = 'freehand'; // 'freehand' or 'rect'
+    let drawing = false;
+    let startX = 0, startY = 0;
+    let savedImage = null;
+
+    // Mode switching
+    freehandBtn.onclick = () => {
+      mode = 'freehand';
+      modeLabel.textContent = 'Mode: Freehand';
+    };
+    rectBtn.onclick = () => {
+      mode = 'rect';
+      modeLabel.textContent = 'Mode: Rectangle';
+    };
+
+    // Mouse events
+    canvas.onmousedown = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      drawing = true;
+
+      if (mode === 'rect') {
+        // Save current canvas for rectangle preview
+        savedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+      }
+    };
+
+    canvas.onmousemove = (e) => {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (mode === 'freehand') {
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (mode === 'rect') {
+        // Draw preview rectangle
+        ctx.putImageData(savedImage, 0, 0);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, x - startX, y - startY);
+      }
+    };
+
+    canvas.onmouseup = (e) => {
+      if (!drawing) return;
+      drawing = false;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (mode === 'rect') {
+        // Draw final rectangle
+        ctx.putImageData(savedImage, 0, 0);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(startX, startY, x - startX, y - startY);
+      }
+    };
+
+    canvas.onmouseleave = () => {
+      drawing = false;
+    };
+  </script>
+</body>
+</html>

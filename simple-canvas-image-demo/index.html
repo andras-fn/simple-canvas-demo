@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Drawing Canvas with Image Upload</title>
+  <style>
+    body { font-family: sans-serif; }
+    #toolbar { margin-bottom: 10px; }
+    canvas { border: 1px solid #333; cursor: crosshair; display: block; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="freehandBtn">Freehand</button>
+    <button id="rectBtn">Rectangle</button>
+    <span id="modeLabel">Mode: Freehand</span>
+    <input type="file" id="fileInput" accept="image/*">
+    <button id="saveBtn">Save</button>
+  </div>
+  <canvas id="canvas" width="600" height="400"></canvas>
+
+  <script>
+    // Get references to DOM elements
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const freehandBtn = document.getElementById('freehandBtn');
+    const rectBtn = document.getElementById('rectBtn');
+    const modeLabel = document.getElementById('modeLabel');
+    const fileInput = document.getElementById('fileInput');
+    const saveBtn = document.getElementById('saveBtn');
+
+    // State variables
+    let mode = 'freehand'; // Current drawing mode: 'freehand' or 'rect'
+    let drawing = false;   // Is the user currently drawing?
+    let startX = 0, startY = 0; // Start position for drawing
+    let savedImage = null; // For rectangle preview
+    let backgroundImg = null; // The uploaded image
+    let imgScale = 1; // Scale factor for the image
+
+    // --- Mode switching handlers ---
+    freehandBtn.onclick = () => {
+      mode = 'freehand';
+      modeLabel.textContent = 'Mode: Freehand';
+    };
+    rectBtn.onclick = () => {
+      mode = 'rect';
+      modeLabel.textContent = 'Mode: Rectangle';
+    };
+
+    // --- Draw the background image (if any) ---
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Always clear first
+      if (backgroundImg) {
+        // Draw the image scaled to fit the canvas
+        ctx.drawImage(
+          backgroundImg,
+          0, 0, backgroundImg.naturalWidth, backgroundImg.naturalHeight, // source
+          0, 0, canvas.width, canvas.height // destination
+        );
+      }
+    }
+
+    // --- Handle file upload ---
+    fileInput.onchange = function(e) {
+      const file = e.target.files[0];
+      if (!file) return; // No file selected
+
+      const img = new window.Image();
+      img.onload = function() {
+        backgroundImg = img;
+
+        // Calculate scale to fit image height to window, keeping aspect ratio
+        const maxHeight = window.innerHeight - 120; // Leave space for toolbar
+        imgScale = Math.min(1, maxHeight / img.naturalHeight);
+
+        // Set canvas size to scaled image size
+        canvas.width = Math.round(img.naturalWidth * imgScale);
+        canvas.height = Math.round(img.naturalHeight * imgScale);
+
+        drawBackground(); // Draw the image on the canvas
+      };
+      img.src = URL.createObjectURL(file); // Load the image from the file
+    };
+
+    // --- Mouse event handlers for drawing ---
+    canvas.onmousedown = (e) => {
+      // Get mouse position relative to canvas
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      drawing = true;
+
+      if (mode === 'rect') {
+        // Save current canvas for rectangle preview
+        savedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      } else {
+        // Start a new freehand path
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+      }
+    };
+
+    canvas.onmousemove = (e) => {
+      if (!drawing) return; // Only draw if mouse is pressed
+
+      // Get current mouse position
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (mode === 'freehand') {
+        // Draw freehand line
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (mode === 'rect') {
+        // Show a preview of the rectangle
+        ctx.putImageData(savedImage, 0, 0); // Restore previous state
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, x - startX, y - startY);
+      }
+    };
+
+    canvas.onmouseup = (e) => {
+      if (!drawing) return;
+      drawing = false;
+
+      // Get end position
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (mode === 'rect') {
+        // Draw the final filled rectangle
+        ctx.putImageData(savedImage, 0, 0); // Restore before drawing
+        ctx.fillStyle = 'black';
+        ctx.fillRect(startX, startY, x - startX, y - startY);
+      }
+      // Freehand drawing ends automatically
+    };
+
+    canvas.onmouseleave = () => {
+      // Stop drawing if mouse leaves the canvas
+      drawing = false;
+    };
+
+    // --- Save the canvas as an image ---
+    saveBtn.onclick = function() {
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.download = 'drawing.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+  </script>
+</body>
+</html>

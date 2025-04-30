@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Fabric.js Demo</title>
+  <style>
+    body { font-family: sans-serif; }
+    #toolbar { margin-bottom: 10px; }
+    canvas { border: 1px solid #333; }
+  </style>
+  <!-- Load Fabric.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="drawRectBtn">Draw Rectangle</button>
+    <button id="drawFreeBtn">Free Draw</button>
+    <button id="selectBtn">Select/Move</button>
+  </div>
+  <canvas id="c" width="600" height="400"></canvas>
+
+  <script>
+    // Initialize Fabric.js canvas
+    const canvas = new fabric.Canvas('c');
+    let drawingMode = 'select'; // 'rect', 'free', or 'select'
+    let rect, isDown, origX, origY;
+
+    // Set up toolbar buttons
+    document.getElementById('drawRectBtn').onclick = function() {
+      drawingMode = 'rect';
+      canvas.isDrawingMode = false;
+    };
+    document.getElementById('drawFreeBtn').onclick = function() {
+      drawingMode = 'free';
+      canvas.isDrawingMode = true;
+      canvas.freeDrawingBrush.color = "black";
+      canvas.freeDrawingBrush.width = 2;
+    };
+    document.getElementById('selectBtn').onclick = function() {
+      drawingMode = 'select';
+      canvas.isDrawingMode = false;
+    };
+
+    // Rectangle drawing logic
+    canvas.on('mouse:down', function(o){
+      if (drawingMode !== 'rect') return;
+      isDown = true;
+      const pointer = canvas.getPointer(o.e);
+      origX = pointer.x;
+      origY = pointer.y;
+      rect = new fabric.Rect({
+        left: origX,
+        top: origY,
+        originX: 'left',
+        originY: 'top',
+        width: 0,
+        height: 0,
+        fill: 'rgba(0,0,0,1)',
+        selectable: false
+      });
+      canvas.add(rect);
+    });
+
+    canvas.on('mouse:move', function(o){
+      if (!isDown || drawingMode !== 'rect') return;
+      const pointer = canvas.getPointer(o.e);
+      rect.set({
+        width: Math.abs(pointer.x - origX),
+        height: Math.abs(pointer.y - origY),
+        left: pointer.x > origX ? origX : pointer.x,
+        top: pointer.y > origY ? origY : pointer.y
+      });
+      canvas.requestRenderAll();
+    });
+
+    canvas.on('mouse:up', function(o){
+      if (drawingMode !== 'rect') return;
+      isDown = false;
+      rect.set({ selectable: true }); // Make the rectangle selectable after drawing
+    });
+
+    // Start in select/move mode
+    drawingMode = 'select';
+    canvas.isDrawingMode = false;
+  </script>
+</body>
+</html>
